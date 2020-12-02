@@ -14,7 +14,7 @@ def accuracy(x, label):
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
-        self.conv1 = nn.Sequential(nn.Conv1d(in_channels=1, out_channels=16, kernel_size=128, stride=1),
+        self.conv1 = nn.Sequential(nn.Conv1d(in_channels=2, out_channels=16, kernel_size=128, stride=1),
                                    nn.Sigmoid(), nn.AvgPool1d(kernel_size=4))
         self.conv2 = nn.Sequential(nn.Conv1d(in_channels=16, out_channels=32, kernel_size=16, stride=1),
                                    nn.Sigmoid(), nn.AvgPool1d(kernel_size=3))
@@ -32,8 +32,8 @@ class CNN(nn.Module):
 if __name__ == '__main__':
     train_data = np.load('train_data.npy')
     train_label = np.load('train_label.npy')
-    # scale the data
-    train_data = train_data.reshape((6000, 1, 4096)) * 1.0e21
+    # use whitened data in two channels
+    train_data = train_data.reshape((6000, 2, 4096))
 
     x_data = torch.from_numpy(train_data)
     x_label = torch.from_numpy(train_label).long().reshape(-1)
