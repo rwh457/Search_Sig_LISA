@@ -1,7 +1,10 @@
+# He.Wang hewang@itp.ac.cn / hewang@mail.bnu.edu.cn
+.cache_hewang/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*$py.class
+*$py.class 
 
 # C extensions
 *.so
