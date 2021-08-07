@@ -10,15 +10,15 @@ def noise_gen(N_s, dt, psd_v):
 
 
 if __name__ == '__main__':
-
     psd = np.load('psd_16384_15s.npy')
     Tobs = 16384 * 15.0
     delta_t = 15.0
     df = 1 / Tobs
-    tsamples = int(Tobs / delta_t) + 1
+    tsamples = int(Tobs / delta_t)
     psd = pycbc.types.frequencyseries.FrequencySeries(psd, delta_f=df)
 
-    N = 4500
-    noise_matrix = np.zeros((N, tsamples))
+    N = 12000
+    noise_matrix = np.zeros((N, 2, tsamples))
     for i in tqdm(range(N)):
-        noise_matrix[i, :] = noise_gen(tsamples, delta_t, psd)
+        noise_matrix[i, 0, :] = noise_gen(tsamples, delta_t, psd)
+        noise_matrix[i, 1, :] = noise_gen(tsamples, delta_t, psd)
