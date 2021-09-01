@@ -167,7 +167,7 @@ if __name__ == '__main__':
     test_label[133:135] = 1
     test_label[239:241] = 1
     test_label[150:152] = 1
-    test_label[89:81] = 1
+    test_label[79:81] = 1
     test_label[70:72] = 1
     test_label[139:141] = 1
     test_label[197:199] = 1
