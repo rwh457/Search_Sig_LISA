@@ -245,6 +245,14 @@ class LISAModel(object):
 
             return test_loss
 
+    @staticmethod
+    def _plot_to(ylabel, p, filename):
+        plt.xlabel('Epoch')
+        plt.ylabel(ylabel)
+        plt.legend()
+        plt.savefig(p / filename)
+        plt.close()
+
     def _logging_to_file(self, epoch):
         # Log the history to file
 
