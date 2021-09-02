@@ -12,6 +12,7 @@ dependencies:
   - h5py
   - jupyterlab
   - ipython
+  - lalsuite
   - pycbc
   - pip
   # For testing and benchmarking
