@@ -8,6 +8,13 @@ import pycbc.psd
 import torch
 
 
+class ToTensor(object):
+    """Convert ndarrays in sample to Tensors."""
+
+    def __call__(self, sample):
+        return torch.from_numpy(sample)
+
+
 class LISADatasetTorch(torch.utils.data.Dataset):
     """LISA dataset
 
@@ -17,6 +24,7 @@ class LISADatasetTorch(torch.utils.data.Dataset):
     """
 
     def __init__(self, epoch_size,  # number of the train samples
+                 transform=None,  # transform for data_block
                  data_dir='../data',
                  num_input=16384,  # num of input
                  delta_t=15):
@@ -42,6 +50,7 @@ class LISADatasetTorch(torch.utils.data.Dataset):
         self.signal_block = None
         self.set_psd()
         self._init_noise()
+        self.transform = transform
 
     def __len__(self):
         return self.var.epoch_size
@@ -60,7 +69,9 @@ class LISADatasetTorch(torch.utils.data.Dataset):
     @property
     def data_block(self):
         return self.noise_block + np.pad(self.signal_block,
-                                         ((0, 10), (0, 0), (0, 0)),
+                                         ((0, self.var.epoch_size - self.var.num_signals),
+                                          (0, 0),
+                                          (0, 0)),
                                          mode='constant',
                                          constant_values=0)
 
