@@ -21,6 +21,7 @@ class LISADatasetTorch(torch.utils.data.Dataset):
     Usage:
     >>> dataset = LISADatasetTorch(epoch_size = 32)
     >>> dataset.init_signals(z=3, istrain=True)
+    >>> dataset.update()
     """
 
     def __init__(self, epoch_size,  # number of the train samples
@@ -49,7 +50,6 @@ class LISADatasetTorch(torch.utils.data.Dataset):
         self.noise_block = None
         self.signal_block = None
         self.set_psd()
-        self._init_noise()
         self.transform = transform
 
     def __len__(self):
@@ -58,11 +58,9 @@ class LISADatasetTorch(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
-        if idx == 0:  # Update self.data_block
-            self.update()
 
-#         if self.rand_transform_data:
-#             self.data_block[idx] = self.rand_transform_data(self.data_block[idx])
+        if self.transform is not None:
+            self.data_block[idx] = self.transform(self.data_block[idx])
 
         return (self.data_block[idx], self.label_block[idx])
 
@@ -97,16 +95,16 @@ class LISADatasetTorch(torch.utils.data.Dataset):
         np.random.shuffle(self.signal_block)
         self.signal_block = self.signal_block[:self.var.num_signals]
 
-    def _init_noise(self):
-        """Init a cache noise_block
-        """
-        self.noise_block = np.empty((self.var.epoch_size, 2, self.var.num_input), dtype=np.float64)
-
     def update(self):
         """Update signals and noises (Gaussian + confusion)
         """
         self.update_noise()
         self.update_signals()
+
+    def _init_noise(self):
+        """Init a cache noise_block
+        """
+        self.noise_block = np.empty((self.var.epoch_size, 2, self.var.num_input), dtype=np.float64)
 
     def update_noise(self):
         """Regenerate Gaussian and confusion noise.
@@ -155,6 +153,7 @@ if __name__ == "__main__":
         num_workers=num_workers,
         worker_init_fn=lambda _: np.random.seed(
             int(torch.initial_seed()) % (2**32-1)))
+    train_loader.dataset.update()
 
     for x, y in train_loader:
         break
