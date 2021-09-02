@@ -1,0 +1,38 @@
+name: search_lisa
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8
+  - numpy
+  - scipy
+  - matplotlib
+  - scikit-learn
+  - corner
+  - h5py
+  - jupyterlab
+  - ipython
+  - pycbc
+  - pip
+  # For testing and benchmarking
+  - pytest
+  - pytest-cov
+  - codecov
+  # For type annotations
+  - mypy
+  - typing_extensions
+  - pylint
+  # PyTorch
+  - pytorch::pytorch
+  - pytorch::torchvision
+  - pandas
+  - tqdm
+  - bilby
+  - astropy
+  - gwpy
+  - pip:
+    - chainconsumer
+    - nflows
+    - pyro-ppl
+    - torchdiffeq
+    - jupyterlab-unfold
