@@ -91,7 +91,8 @@ class LISAModel(object):
             nn.ReLU(),
             nn.Dropout(p=0.1),
             nn.LazyLinear(2),
-            nn.Sigmoid()
+            #nn.Sigmoid()
+            # nn.CrossEntropyLoss() has softmax(). Therefore, there is no softmax() on this network.
         )
 
         self.net.to(self.device)
@@ -228,11 +229,10 @@ class LISAModel(object):
                 # Compute log prob
                 loss = self.loss(self.net(x), y)
 
-                loss = loss.mean()
-
                 # Keep track of total loss
                 test_loss += loss.sum()
 
+                loss = loss.mean()
                 print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tCost: {:.2f}s'.format(
                     epoch, batch_idx *
                     self.test_loader.batch_size, len(self.test_loader.dataset),
