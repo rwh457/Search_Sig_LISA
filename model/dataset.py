@@ -6,6 +6,34 @@ import pycbc.noise
 import pycbc.types
 import pycbc.psd
 import torch
+from collections.abc import Iterable
+
+
+def relativelocation(data, target_length, target_percentage, target_channel=0):
+    """
+    Examples:
+    >>> d = relativelocation(data, 16384, [0.5, 0.8])
+    >>> plt.hist(d.argmax(-1)[:,0] / 16384, bins='auto')
+
+    >>> d = relativelocation(data, 16384, 0.7)
+    >>> d.argmax(-1) / 16384
+    """
+    assert len(data.shape) == 3
+    if isinstance(target_percentage, Iterable):
+        percentage = np.random.uniform(*target_percentage, len(data))[..., np.newaxis]
+    elif isinstance(target_percentage, float):
+        percentage = target_percentage
+    else:
+        raise
+
+    indexs = np.array(data.argmax(-1) - (target_length * percentage), dtype=np.intp)[:, target_channel]
+    assert True not in (indexs < 0),\
+    'Found a sample violating: data.argmax(-1)  - (target_length * percentage), '\
+    f'so decrease the (right bound) target_percentage of {target_percentage}'
+    assert False not in (indexs+target_length <= data.shape[-1]),\
+    'Found a sample violating: percentage + target_length <= len(data), '\
+    f'so increase the (left bound) target_percentage of {target_percentage}'
+    return np.concatenate([data[i, :, j:j+target_length][np.newaxis, ...] for i, j in enumerate(indexs)])
 
 
 class ToTensor(object):
@@ -20,7 +48,7 @@ class LISADatasetTorch(torch.utils.data.Dataset):
 
     Usage:
     >>> dataset = LISADatasetTorch(epoch_size = 32)
-    >>> dataset.init_signals(z=3, istrain=True)
+    >>> dataset.init_signals(z=3, target_percentage=[0.5,0.8], istrain=True)
     >>> dataset.update()
     """
 
@@ -48,6 +76,9 @@ class LISADatasetTorch(torch.utils.data.Dataset):
 
         self.psd = None
         self.noise_block = None
+        self.signal_ori = None
+        self.target_percentage = None
+        self.target_channel = None
         self.signal_block = None
         self.set_psd()
         self.transform = transform
@@ -80,19 +111,25 @@ class LISADatasetTorch(torch.utils.data.Dataset):
                        self.var.epoch_size - self.var.num_signals - 1),
                       mode='edge')
 
-    def init_signals(self, z, istrain=True):
+    def init_signals(self, z, target_percentage, target_channel=0, istrain=True):
         """Init and update signal_block
         """
         # TODO: num of samples in signal_block vs epoch_size
         cache = '' if istrain else 'test_'
-        self.signal_block = np.load(self.var.data_dir / 'signal' / f'z{z}' /
-                                    f'{cache}sig_z{z}_random_AE_16384.npy')  # (3000, 2, 16384)
+        self.signal_ori = np.load(self.var.data_dir / 'signal' / f'z{z}' /
+                                  f'{cache}sig_z{z}_random_AE_16384.npy')  # (3000, 2, 16384)
+        self.target_percentage = target_percentage
+        self.target_channel = target_channel
         self.update_signals()
 
     def update_signals(self):
         """Update signals (reshuffle)
         """
-        np.random.shuffle(self.signal_block)
+        np.random.shuffle(self.signal_ori)
+        self.signal_block = relativelocation(self.signal_ori,
+                                             self.var.num_input,
+                                             self.target_percentage,
+                                             self.target_channel)
         self.signal_block = self.signal_block[:self.var.num_signals]
 
     def update(self):

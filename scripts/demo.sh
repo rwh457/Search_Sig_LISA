@@ -9,6 +9,7 @@ python3.7 ../model/main.py train new \
     --model_dir ../output/demo_model \
     --save_model_name model.pt \
     --data.z 1 \
+    --data.target_percentage 0.5 0.8 \
     --data.epoch_size 200 \
     --data.batch_size 64 \
     --data.num_workers 0 \

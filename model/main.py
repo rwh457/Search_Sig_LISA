@@ -56,9 +56,9 @@ class LISAModel(object):
         else:
             self.device = torch.device('cpu')
 
-    def init_dataset(self, z, epoch_size, batch_size, num_workers, transform=None):
+    def init_dataset(self, z, epoch_size, target_percentage, batch_size, num_workers, transform=None):
         ds_train = LISADatasetTorch(epoch_size, transform)
-        ds_train.init_signals(z=z, istrain=True)
+        ds_train.init_signals(z=z, target_percentage=target_percentage, istrain=True)
         self.train_loader = DataLoader(
             ds_train, batch_size=batch_size, shuffle=True, pin_memory=True,
             num_workers=num_workers,
@@ -66,7 +66,7 @@ class LISAModel(object):
                 int(torch.initial_seed()) % (2**32-1)))
 
         ds_test = LISADatasetTorch(epoch_size, transform)
-        ds_test.init_signals(z=z, istrain=False)
+        ds_test.init_signals(z=z, target_percentage=target_percentage, istrain=False)
         self.test_loader = DataLoader(
             ds_test, batch_size=batch_size, shuffle=False, pin_memory=True,
             num_workers=num_workers,
@@ -155,7 +155,7 @@ class LISAModel(object):
             print('Learning rate: {}'.format(
                 self.optimizer.state_dict()['param_groups'][0]['lr']))
             train_loss = self.train_epoch(epoch, output_freq)
-            test_loss =  self.test_epoch(epoch, output_freq)
+            test_loss = self.test_epoch(epoch, output_freq)
 
             if self.scheduler is not None:
                 self.scheduler.step()
@@ -325,6 +325,8 @@ def parse_args():
     dataset_parent_parser.add_argument(
         '--data.z', type=int, default=1)
     dataset_parent_parser.add_argument(
+        '--data.target_percentage', nargs='+', type=float, default=(0.5, 0.8))
+    dataset_parent_parser.add_argument(
         '--data.epoch_size', type=int, default='64')
     dataset_parent_parser.add_argument(
         '--data.batch_size', type=int, default='16')
@@ -402,6 +404,7 @@ def main():
         ToTensor(),
     ])
     lm.init_dataset(args.data.z,
+                    args.data.target_percentage,
                     args.data.epoch_size,
                     args.data.batch_size,
                     args.data.num_workers,
