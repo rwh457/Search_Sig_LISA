@@ -1,10 +1,15 @@
 # [W NNPACK.cpp:79] Could not initialize NNPACK! Reason: Unsupported hardware.  # TODO
 # http://www.diracprogram.org/doc/release-12/installation/mkl.html
 # https://github.com/PaddlePaddle/Paddle/issues/17615
+# 
+# He Wang (hewang@mail.bnu.edu.cn)
+# 2021-2022
+
 import os
 import sys
 import argparse
 import csv
+
 sys.path.insert(0, '..')
 from model.dataset import (LISADatasetTorch, ToTensor)
 from model.mfcnn import (MFLayer, CutHybridLayer)
@@ -19,6 +24,8 @@ from tqdm import tqdm
 import time
 from pathlib import Path
 import matplotlib.pyplot as plt
+
+
 # os.environ['OMP_NUM_THREADS'] = str(1)
 # os.environ['MKL_NUM_THREADS'] = str(1)
 
@@ -26,8 +33,10 @@ import matplotlib.pyplot as plt
 class LISAModel(object):
     def __init__(self,
                  model_dir,
+                 load_model_dir,
                  data_dir,
                  save_model_name,
+                 load_model_name,
                  use_cuda):
         super().__init__()
         if model_dir is None:
@@ -35,8 +44,10 @@ class LISAModel(object):
                             " Store in attribute PosteriorModel.model_dir")
         self.model_dir = Path(model_dir)
         self.model_dir.mkdir(parents=True, exist_ok=True)
+        self.load_model_dir = Path(load_model_dir)
         self.data_dir = Path(data_dir)
         self.save_model_name = save_model_name
+        self.load_model_name = load_model_name
 
         self.train_history = []
         self.test_history = []
@@ -86,12 +97,14 @@ class LISAModel(object):
             nn.ReLU(),
             nn.MaxPool1d(kernel_size=4, stride=2),
             nn.Flatten(),
-            #     Flatten(),
-            nn.LazyLinear(32),
+            nn.Linear(288, 32),  # 288, 544, 704, 1504, 3104
             nn.ReLU(),
             nn.Dropout(p=0.1),
-            nn.LazyLinear(2),
-            #nn.Sigmoid()
+            # nn.Linear(320, 32),
+            # nn.ReLU(),
+            # nn.Dropout(p=0.05),
+            nn.Linear(32, 2),
+            # nn.Sigmoid()
             # nn.CrossEntropyLoss() has softmax(). Therefore, there is no softmax() on this network.
         )
 
@@ -99,25 +112,29 @@ class LISAModel(object):
 
     def load_model(self):
 
-        checkpoint = torch.load(self.model_dir / ffname(self.model_dir,
-                                                        f'e*_{self.save_model_name}')[0],
+        checkpoint = torch.load(self.load_model_dir / ffname(self.load_model_dir,
+                                                             f'e*_{self.load_model_name}')[0],
                                 map_location=self.device)
         # Load flow_net
-        print('Load model from:', self.model_dir / ffname(self.model_dir,
-                                                          f'e*_{self.save_model_name}')[0])
+        print('Load model from:', self.load_model_dir / ffname(self.load_model_dir,
+                                                               f'e*_{self.load_model_name}')[0])
 
         self.net.load_state_dict(checkpoint['net_state_dict'])
 
-        # Load loss history
-        with open(self.model_dir / 'loss_history.txt', 'r') as f:
-            reader = csv.reader(f, delimiter='\t')
-            for row in reader:
-                self.train_history.append(float(row[1]))
-                self.test_history.append(float(row[2]))
-
         # Set the epoch to the correct value. This is needed to resume
         # training.
-        self.epoch_cache = checkpoint['epoch_cache']
+        if self.load_model_dir == self.model_dir:
+            self.epoch_cache = checkpoint['epoch_cache']
+
+            # Load loss history
+            with open(self.load_model_dir / 'loss_history.txt', 'r') as f:
+                reader = csv.reader(f, delimiter='\t')
+                for row in reader:
+                    self.train_history.append(float(row[1]))
+                    self.test_history.append(float(row[2]))
+
+        else:
+            self.epoch_cache = 1
         self.epoch_minimum_test_loss = checkpoint['epoch_minimum_test_loss']
 
     def init_training(self, kwargs):
@@ -233,12 +250,13 @@ class LISAModel(object):
                 test_loss += loss.sum()
 
                 loss = loss.mean()
-                print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tCost: {:.2f}s'.format(
-                    epoch, batch_idx *
-                    self.test_loader.batch_size, len(self.test_loader.dataset),
-                    100. * batch_idx / len(self.test_loader),
-                    loss.item(), time.time()-start_time))
-                start_time = time.time()
+                if (output_freq is not None) and (batch_idx % output_freq == 0):
+                    print('Test Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.4f}\tCost: {:.2f}s'.format(
+                        epoch, batch_idx *
+                               self.test_loader.batch_size, len(self.test_loader.dataset),
+                               100. * batch_idx / len(self.test_loader),
+                        loss.item(), time.time() - start_time))
+                    start_time = time.time()
 
             test_loss = test_loss.item() / len(self.test_loader.dataset)
             print(f'Test set: Average loss: {test_loss:.4f}')
@@ -316,8 +334,10 @@ def parse_args():
     # dir
     dir_parent_parser = argparse.ArgumentParser(add_help=False)
     dir_parent_parser.add_argument('--model_dir', type=str, required=True)
+    dir_parent_parser.add_argument('--load_model_dir', type=str, required=True)
     dir_parent_parser.add_argument('--data_dir', type=str, default='../data')
     dir_parent_parser.add_argument('--save_model_name', type=str, required=True)
+    dir_parent_parser.add_argument('--load_model_name', type=str, required=True)
     dir_parent_parser.add_argument('--no_cuda', action='store_false', dest='cuda')
 
     # dataset: LISADatasetTorch
@@ -383,6 +403,7 @@ def parse_args():
     return parser.parse_args(namespace=ns)
 
 
+
 def main():
     global args
     args = parse_args()
@@ -392,9 +413,12 @@ def main():
     print('Model directory\t', args.model_dir)
     print('Data directory\t', args.data_dir)
     lm = LISAModel(model_dir=args.model_dir,
+                   load_model_dir=args.load_model_dir,
                    data_dir=args.data_dir,
                    save_model_name=args.save_model_name,
+                   load_model_name=args.load_model_name,
                    use_cuda=args.cuda)
+
     print(f'Save the model as\t{args.save_model_name}')
     print('Device\t\t\t', lm.device)
 
@@ -403,20 +427,24 @@ def main():
     transform = transforms.Compose([
         ToTensor(),
     ])
+
     lm.init_dataset(args.data.z,
                     args.data.target_percentage,
                     args.data.epoch_size,
                     args.data.batch_size,
                     args.data.num_workers,
-                    transform)
+                    transform
+                    )
 
-    S_t_m12 = np.load(lm.data_dir / 'S_t.npy')[np.newaxis, np.newaxis, ...]
+    S_t_m12 = np.load(lm.data_dir / 'S_t_m.npy')[np.newaxis, np.newaxis, ...]
+    # S_t_m12 = np.load(lm.data_dir / 'S_t.npy')[::-1].copy()
+    # S_t_m12 = S_t_m12[np.newaxis, np.newaxis, ...]
     S_t_m12 = torch.tensor(S_t_m12, dtype=torch.float32)  # [1, 1, 16384]
 
-    template = np.load(lm.data_dir / 'template_St_matrix_z3_AE_4096_50.npy')
+    template = np.load(lm.data_dir / 'template_data' / 'template_St_matrix_z3_AE_4096_50.npy')
     template = torch.tensor(template, dtype=torch.float32)  # (50, 2, 4096) [4096 x 15]sec
 
-    hh_sqrt = np.load(lm.data_dir / 'hh_sqrt_4096_50.npy')  # (50, 2)
+    hh_sqrt = np.load(lm.data_dir / 'template_data' / 'hh_sqrt_4096_50.npy')  # (50, 2)
     hh_sqrt = torch.tensor(hh_sqrt, dtype=torch.float32)
 
     if args.model_source == 'new':

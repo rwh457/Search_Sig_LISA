@@ -1,6 +1,7 @@
 import os
 import fnmatch
 import csv
+import numpy as np
 
 
 def print_dict(d: dict,  ncol: int, prex: str = ''):
@@ -32,3 +33,32 @@ def ffname(path, pat):
     return [filename
             for filename in os.listdir(path)
             if fnmatch.fnmatch(filename, pat)]
+
+
+class Patching_data(object):
+    """Patching for strain (the last dim)
+    """
+
+    def __init__(self, patch_size, overlap, sampling_frequency):
+        """
+        patch_size, sec
+        overlap, sec
+        """
+        self.nperseg = int(patch_size * sampling_frequency)  # sec
+        # noverlap must be less than nperseg.
+        self.noverlap = int(overlap * self.nperseg)  # [%]
+        # nstep = nperseg - noverlap
+        print(f'\tPatching with patch size={patch_size}s and overlap={overlap}%.')
+
+    def __call__(self, x):
+        shape = x.shape
+        # Created strided array of data segments
+        if self.nperseg == 1 and self.noverlap == 0:
+            return x[..., np.newaxis]
+        # https://stackoverflow.com/a/5568169  also
+        # https://iphysresearch.github.io/blog/post/signal_processing/spectral_analysis_scipy/#_fft_helper
+        nstep = self.nperseg - self.noverlap
+        shape = shape[:-1]+((shape[-1]-self.noverlap)//nstep, self.nperseg)
+        strides = x.strides[:-1]+(nstep*x.strides[-1], x.strides[-1])
+        return np.lib.stride_tricks.as_strided(x, shape=shape,
+                                               strides=strides)
