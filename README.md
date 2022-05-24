@@ -19,7 +19,7 @@ The coalescences of massive black hole binaries are one of the main targets of s
 
 ## Usage
 
-- See `./notebook/notebook.ipynb` for how to evaluate the model.
+- See `./notebooks/notebook.ipynb` for how to evaluate the model.
 
 
 ## Results
