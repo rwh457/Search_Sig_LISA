@@ -6,7 +6,7 @@
 <sub>1. CAS Key Laboratory of Theoretical Physics, Institute of Theoretical Physics, Chinese Academy of Sciences, Beijing 100190, China</sub>  
 <sub>2. School of Physical Sciences, University of Chinese Academy of Sciences, No.19A Yuquan Road, Beijing 100049, China</sub>  
 <sub>3. School of Fundamental Physics and Mathematical Sciences, Hangzhou Institute for Advanced Study, University of Chinese Academy of Sciences, Hangzhou 310024, China</sub>  
-<sub>$\dagger$. </sub>  
+<sub>$\dagger$. contribute equally</sub>  
 
 
 
@@ -32,3 +32,11 @@ The coalescences of massive black hole binaries are one of the main targets of s
 Copyright (c) 2021-2022  ITP-CAS
 
 Licensed under the MIT license. For copyright information, consult the LICENSE file.
+
+If you use the material provided here, please cite the paper using the reference:
+
+```
+TBA
+```
+
+## Acknowledgments
